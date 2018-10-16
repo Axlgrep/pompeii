@@ -35,6 +35,9 @@ redis_cli: redis_cli.cc
 	$(CXX) $(CXXFLAGS) $^ -o $@  $(INCLUDE_PATH) $(HIREDIS_LIBRARY)
 
 clean:
+	rm -rf redis_cli
+
+distclean:
 	make -C $(ROCKSDB_PATH) clean 
 	make -C $(HIREDIS_PATH) clean
 	rm -rf redis_cli
