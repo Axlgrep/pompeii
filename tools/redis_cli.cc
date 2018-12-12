@@ -25,6 +25,43 @@ int main() {
     printf("Connect success...\n");
   }
 
+  {
+    size_t MAX_BATCH_LIMIT = 10000000;
+    const char* argv[3] = {"SET", NULL, NULL};
+    size_t argv_len[3] = {3, 0, 0};
+    for (int32_t idx = 0; idx < MAX_BATCH_LIMIT; ++idx) {
+      std::string key = "key_" +  std::to_string(idx);
+      std::string value = "value_" + std::to_string(idx);
+      argv[1] = key.data(), argv_len[1] = key.size();
+      argv[2] = value.data(), argv_len[2] = value.size();
+
+      if (redisAppendCommandArgv(c,
+                                 3,
+                                 reinterpret_cast<const char**>(argv),
+                                 reinterpret_cast<const size_t*>(argv_len)) == REDIS_ERR) {
+        printf("Redis Append Command Argv Error, exit...\n");
+        exit(-1);
+      } else {
+        printf("success Append Command, Index: %d\n", idx);
+      }
+    }
+
+    for (int32_t idx = 0; idx < MAX_BATCH_LIMIT; ++idx) {
+      if (redisGetReply(c, reinterpret_cast<void**>(&res)) == REDIS_ERR) {
+        printf("Redis Get Reply Error, exit...\n");
+        exit(-1);
+      } else {
+        if (res == NULL) {
+          printf("Redis Get Reply Error, Index: %d, Reply: NULL, exit...\n", idx);
+          exit(-1);
+        } else {
+          printf("success Get Reply, Index: %d, Reply: %s\n", idx, res->str);
+        }
+        freeReplyObject(res);
+      }
+    }
+  }
+
   for (int32_t sidx = 0; sidx < 10000; ++sidx) {
     const char* set_argv[3];
     size_t set_argvlen[3];
