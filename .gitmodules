@@ -4,3 +4,6 @@
 [submodule "third/rocksdb"]
 	path = third/rocksdb
 	url = https://github.com/facebook/rocksdb.git
+[submodule "third/slash"]
+	path = third/slash
+	url = https://github.com/Qihoo360/slash.git
