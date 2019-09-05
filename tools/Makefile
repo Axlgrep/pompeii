@@ -25,7 +25,7 @@ LIB_PATH     =
 
 LIBS         =
 
-OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo
+OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo pipe_example duplex_pipe_example popen_example
 
 all: $(OBJECT)
 
@@ -44,6 +44,15 @@ redis_cli: redis_cli.cc
 demo : demo.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
 
+pipe_example : pipe_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+duplex_pipe_example : duplex_pipe_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+popen_example : popen_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
 clean:
 	rm -rf redis_cli demo
 
@@ -53,5 +62,8 @@ distclean:
 	make -C $(SLASH_PATH)/slash clean
 	rm -rf redis_cli
 	rm -rf demo
+	rm -rf pipe_example
+	rm -rf duplex_pipe_example
+	rm -rf popen_example 
 
 
