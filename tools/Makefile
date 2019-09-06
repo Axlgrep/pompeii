@@ -25,7 +25,7 @@ LIB_PATH     =
 
 LIBS         =
 
-OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo pipe_example duplex_pipe_example popen_example
+OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo pipe_example duplex_pipe_example popen_example fifo_example fifo_client_example fifo_server_example fifo_main_client_example fifo_main_server_example
 
 all: $(OBJECT)
 
@@ -53,6 +53,21 @@ duplex_pipe_example : duplex_pipe_example.cc
 popen_example : popen_example.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
 
+fifo_example : fifo_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+fifo_client_example : fifo_client_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+fifo_server_example : fifo_server_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+fifo_main_client_example : fifo_main_client_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
+fifo_main_server_example : fifo_main_server_example.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
+
 clean:
 	rm -rf redis_cli demo
 
@@ -65,5 +80,10 @@ distclean:
 	rm -rf pipe_example
 	rm -rf duplex_pipe_example
 	rm -rf popen_example 
+	rm -rf fifo_example
+	rm -rf fifo_client_example
+	rm -rf fifo_server_example
+	rm -rf fifo_main_client_example
+	rm -rf fifo_main_server_example
 
 
