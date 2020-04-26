@@ -7,3 +7,6 @@
 [submodule "third/slash"]
 	path = third/slash
 	url = https://github.com/Qihoo360/slash.git
+[submodule "third/googletest"]
+	path = third/googletest
+	url = https://github.com/google/googletest.git
