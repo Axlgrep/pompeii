@@ -1,5 +1,5 @@
 CXX=g++
-LDFLAGS=-lpthread -lsnappy
+LDFLAGS=-lpthread -lsnappy -levent
 CXXFLAGS= -std=c++11 -g
 
 .PHONY : clean all
@@ -17,7 +17,7 @@ LIB_PATH     =
 
 LIBS         =
 
-OBJECTS = HIREDIS replay
+OBJECTS = HIREDIS replay subscribe_client publish_client
 
 all: $(OBJECTS)
 
@@ -30,11 +30,21 @@ HIREDIS:
 replay: replay.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
 
+subscribe_client: subscribe_client.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
+
+publish_client: publish_client.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
+
 clean:
 	rm -rf replay
+	rm -rf subscribe_client
+	rm -rf publish_client
 
 distclean:
 	make -C $(HIREDIS_PATH) clean
 	rm -rf replay
+	rm -rf subscribe_client
+	rm -rf publish_client
 
 

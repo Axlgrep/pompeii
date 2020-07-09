@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <sys/socket.h>
 
 #include <iostream>
 
@@ -99,10 +102,12 @@ TEST_F(TransactionTest, DISCARD_CASE_1) {
 // multi -> discard
 TEST_F(TransactionTest, DISCARD_CASE_2) {
   res = (redisReply*)redisCommand(ctx, "MULTI");
+  ASSERT_EQ(REDIS_REPLY_STATUS, res->type);
   ASSERT_STREQ("OK", res->str);
   freeReplyObject(res);
 
   res = (redisReply*)redisCommand(ctx, "DISCARD");
+  ASSERT_EQ(REDIS_REPLY_STATUS, res->type);
   ASSERT_STREQ("OK", res->str);
   freeReplyObject(res);
 }
@@ -545,6 +550,89 @@ TEST_F(TransactionTest, EXEC_CASE_11) {
 
   res = (redisReply*)redisCommand(ctx, "DEL 06S Qi");
   freeReplyObject(res);
+}
+
+TEST_F(TransactionTest, EXEC_CASE_12) {
+  redisAppendCommand(ctx, "multi");
+  redisAppendCommand(ctx, "get axl");
+  //redisAppendCommand(ctx, "get key");
+  redisAppendCommand(ctx, "exec");
+
+  redisAppendCommand(ctx, "multi");
+  redisAppendCommand(ctx, "get axl");
+  //redisAppendCommand(ctx, "get key");
+  redisAppendCommand(ctx, "exec");
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_STREQ("OK", res->str);
+  freeReplyObject(res);
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_STREQ("QUEUED", res->str);
+  freeReplyObject(res);
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_EQ(REDIS_REPLY_ARRAY, res->type);
+  freeReplyObject(res);
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_STREQ("OK", res->str);
+  freeReplyObject(res);
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_STREQ("QUEUED", res->str);
+  freeReplyObject(res);
+
+  redisGetReply(ctx, reinterpret_cast<void**>(&res));
+  ASSERT_EQ(REDIS_REPLY_ARRAY, res->type);
+  freeReplyObject(res);
+}
+
+TEST_F(TransactionTest, EXEC_CASE_13) {
+  int clientfd;
+  struct hostent *hp;
+  struct sockaddr_in serveraddr;
+  char buf[1024];
+
+  clientfd = socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_NE(clientfd, -1);
+
+  hp = gethostbyname(hostname);
+  int ret = (hp == NULL) ? -1 : 0;
+  ASSERT_NE(ret, -1);
+
+  bzero((char*)&serveraddr, sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  bcopy((char*)hp->h_addr_list[0], (char*)&serveraddr.sin_addr.s_addr, hp->h_length);
+  serveraddr.sin_port = htons(port);
+
+  ret = connect(clientfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+  ASSERT_NE(ret, -1);
+
+  ret = fcntl(clientfd, F_SETFL, fcntl(clientfd, F_GETFD, 0) | O_NONBLOCK);
+  ASSERT_NE(ret, -1);
+
+  std::string str1 = "*1\r\n$5\r\nmulti\r\n*2\r\n$3\r\nget\r\n$3\r\naxl\r\n*1\r\n$4\r\nexec";
+  std::string str2 = "\r\n*1\r\n$5\r\nmulti\r\n*2\r\n$3\r\nget\r\n$3\r\naxl\r\n*1\r\n$4\r\nexec\r\n";
+
+  int writeLen = write(clientfd, str1.data(), str1.size());
+  ASSERT_EQ(writeLen, str1.size());
+  sleep(1);
+  writeLen = write(clientfd, str2.data(), str2.size());
+  ASSERT_EQ(writeLen, str2.size());
+
+  std::string reply;
+  long long start = time(NULL);
+  while (time(NULL) - start < 3) {
+    int readLen = read(clientfd, buf, 1024);
+    ASSERT_NE(readLen, 0);
+    if (readLen == -1) {
+      continue;
+    }
+    reply.append(buf, readLen);
+  }
+  close(clientfd);
+  ASSERT_EQ("+OK\r\n+QUEUED\r\n*1\r\n$-1\r\n+OK\r\n+QUEUED\r\n*1\r\n$-1\r\n", reply);
 }
 
 int main(int argc, char** argv) {

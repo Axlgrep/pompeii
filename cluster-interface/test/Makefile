@@ -21,7 +21,7 @@ LIB_PATH     =
 
 LIBS         =
 
-OBJECTS = HIREDIS GOOGLETEST gtest_exists gtest_unlink gtest_transaction
+OBJECTS = HIREDIS GOOGLETEST gtest_exists gtest_unlink gtest_transaction gtest_pipeline
 
 all: $(OBJECTS)
 
@@ -29,6 +29,8 @@ test: $(OBJECTS)
 	@./gtest_exists
 	@./gtest_unlink
 	@./gtest_transaction
+	@./gtest_pipeline
+	@./gtest_special
 
 HIREDIS:
 	make -C $(HIREDIS_PATH)
@@ -45,15 +47,25 @@ gtest_unlink: gtest_unlink.cc
 gtest_transaction: gtest_transaction.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
 
+gtest_pipeline: gtest_pipeline.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
+
+gtest_special: gtest_special.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(INCLUDE_PATH) $(HIREDIS_LIBRARY) $(GOOGLETEST_LIBRARY)
+
 clean:
 	rm -rf gtest_exists
 	rm -rf gtest_unlink
 	rm -rf gtest_transaction
+	rm -rf gtest_pipeline
+	rm -rf gtest_special
 
 distclean:
 	make -C $(HIREDIS_PATH) clean
 	rm -rf gtest_exists
 	rm -rf gtest_unlink
 	rm -rf gtest_transaction
+	rm -rf gtest_pipeline
+	rm -rf gtest_special
 
 
