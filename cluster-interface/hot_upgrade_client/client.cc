@@ -4,16 +4,22 @@
 #include <unistd.h>
 #include <vector>
 
+#include <atomic>
+#include <iostream>
+
 #include <iostream>
 #include <hiredis.h>
 
 const size_t PIPELINE_LIMIT = 1000;
 std::string hostname = "127.0.0.1";
 size_t port = 18889;
-size_t client_num = 1;
+std::string password = "";
+size_t client_num = 10;
 
 const size_t KEY_NUM = 100000000;
 const size_t FIELD_NUM = 1000;
+std::atomic<long long> total_request(0);
+std::atomic<long long> total_request_old(0);
 
 redisContext* createClient(const std::string& hostname, int port) {
   redisContext *c;
@@ -28,6 +34,22 @@ redisContext* createClient(const std::string& hostname, int port) {
       printf("Connection error: can't allocate redis context\n");
     }
     return NULL;
+  }
+
+  if (!password.empty()) {
+    redisReply *res;
+    const char* auth_argv[2] = {"auth", password.data()};
+    size_t auth_argv_len[2] = {4, password.size()};
+    res = (redisReply*)redisCommandArgv(c,
+                                        2,
+                                        reinterpret_cast<const char**>(auth_argv),
+                                        reinterpret_cast<const size_t*>(auth_argv_len));
+    if (res->type == REDIS_REPLY_ERROR) {
+      fprintf(stderr, "client auth failed: %s\n", res->str);
+      freeReplyObject(res);
+      exit(-1);
+    }
+    freeReplyObject(res);
   }
   return c;
 }
@@ -394,6 +416,70 @@ void ZAddCommand(redisContext* c) {
   }
 }
 
+void PublishCommand(redisContext* c) {
+  std::vector<std::string> channels;
+  channels.push_back("channel1");
+  channels.push_back("channel2");
+  channels.push_back("channel3");
+  channels.push_back("channel4");
+  channels.push_back("channel5");
+  channels.push_back("channel6");
+  channels.push_back("channel7");
+  channels.push_back("channel8");
+  channels.push_back("channel9");
+  channels.push_back("channel10");
+  channels.push_back("channel11");
+  channels.push_back("channel12");
+  channels.push_back("channel13");
+  channels.push_back("channel14");
+  channels.push_back("channel15");
+  channels.push_back("channel16");
+  const char* publish_argv[3] = {"publish", "", "message"};
+  size_t publish_argv_len[3] = {7, 0, 7};
+
+  for (const auto& channel : channels) {
+    redisReply *res;
+    publish_argv[1] = channel.data();
+    publish_argv_len[1] = channel.size();
+    res = (redisReply*)redisCommandArgv(c,
+                                        3,
+                                        reinterpret_cast<const char**>(publish_argv),
+                                        reinterpret_cast<const size_t*>(publish_argv_len));
+
+    if (res->type != REDIS_REPLY_INTEGER) {
+      fprintf(stderr, "publish message error: %s\n", res->str);
+      exit(-1);
+    } else {
+      total_request++;
+      freeReplyObject(res);
+    }
+  }
+}
+
+void SubscribeCommand(redisContext* c) {
+  const char* subscribe_argv[2] = {"subscribe", "channel"};
+  size_t subscribe_argv_len[2] = {9, 7};
+
+  redisReply *res;
+  res = (redisReply*)redisCommandArgv(c,
+                                      2,
+                                      reinterpret_cast<const char**>(subscribe_argv),
+                                      reinterpret_cast<const size_t*>(subscribe_argv_len));
+  printf("res: %s\n", res->str);
+
+  /*
+    if (res->type != REDIS_REPLY_INTEGER) {
+      fprintf(stderr, "publish message error: %s\n", res->str);
+      exit(-1);
+    } else {
+      total_request++;
+      freeReplyObject(res);
+    }
+  }
+  */
+}
+
+
 void* pressurePipeline(void*) {
   
   redisContext* client[client_num];
@@ -537,11 +623,62 @@ void* pressureZAdd(void*) {
   }
 }
 
+void* pressureSubscribe(void*) {
+  redisContext* client[client_num];
+  for (size_t i = 0; i < client_num; i++) {
+    client[i] = createClient(hostname, port);
+    if (client[i] == NULL) {
+      fprintf (stderr, "create client error");
+      exit(-1);
+    }
+  }
+
+  for (size_t i = 0; i < client_num; i++) {
+    SubscribeCommand(client[i]);
+  }
+  while (true) {
+  }
+}
+
+
+void* pressurePublish(void*) {
+  redisContext* client[client_num];
+  for (size_t i = 0; i < client_num; i++) {
+    client[i] = createClient(hostname, port);
+    if (client[i] == NULL) {
+      fprintf (stderr, "create client error");
+      exit(-1);
+    }
+  }
+
+  while (true) {
+    for (size_t i = 0; i < client_num; i++) {
+      PublishCommand(client[i]);
+    }
+  }
+}
+
+void* updateQPS(void *) {
+  struct timeval now_tv;
+  int64_t last_time = 0;
+  int64_t new_time_ms = 0;
+  while (true) {
+    gettimeofday(&now_tv, NULL);
+    new_time_ms = (int64_t)now_tv.tv_sec * 1000 + now_tv.tv_usec / 1000;
+
+    if (last_time + 1000 <= new_time_ms) {
+      printf("QPS: %lld\n", total_request - total_request_old);
+      total_request_old.store(total_request);
+      last_time = new_time_ms;
+    }
+  }
+}
+
 
 int main(int argc, char **argv) {
 
   int ch;
-  while ((ch = getopt(argc, argv, "h:p:")) != -1) {
+  while ((ch = getopt(argc, argv, "h:p:a:")) != -1) {
 
     switch (ch) {
       case 'h' :
@@ -549,6 +686,9 @@ int main(int argc, char **argv) {
         break;
       case 'p' :
         port = atoi(optarg);
+        break;
+      case 'a' :
+        password = std::string(optarg);
         break;
       case 'c' :
         client_num = atoi(optarg);
@@ -592,11 +732,19 @@ int main(int argc, char **argv) {
   }
   */
 
+  /*
   pthread_create(&tid[0], NULL, pressureSet, NULL);
   pthread_create(&tid[1], NULL, pressureLPush, NULL);
   pthread_create(&tid[2], NULL, pressureHSet, NULL);
   pthread_create(&tid[3], NULL, pressureSAdd, NULL);
   pthread_create(&tid[4], NULL, pressureZAdd, NULL);
+  */
+  for (size_t i = 0; i < 128; i++) {
+    pthread_create(&tid[i], NULL, pressureSubscribe, NULL);
+  }
+
+  pthread_t update_qps_thread;
+  pthread_create(&update_qps_thread, NULL, updateQPS, NULL);
 
   while (true) {
     sleep(1);
