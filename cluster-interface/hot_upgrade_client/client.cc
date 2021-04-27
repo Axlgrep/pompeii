@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include <math.h>
 #include <atomic>
 #include <iostream>
 
@@ -658,6 +659,42 @@ void* pressurePublish(void*) {
   }
 }
 
+void* ScanData(void*) {
+  redisContext* client;
+  client = createClient(hostname, port);
+  if (client == NULL) {
+    fprintf (stderr, "create client error");
+    exit(-1);
+  }
+
+  size_t cursor = 0;
+  size_t total_key = 0;
+  const char* scan_argv[2] = {"scan", ""};
+  size_t scan_argv_len[2] = {4, 0};
+  do {
+    std::string cursor_str = std::to_string(cursor);
+
+    redisReply *res;
+    scan_argv[1] = cursor_str.data();
+    scan_argv_len[1] = cursor_str.size();
+    res = (redisReply*)redisCommandArgv(client,
+                                        2,
+                                        reinterpret_cast<const char**>(scan_argv),
+                                        reinterpret_cast<const size_t*>(scan_argv_len));
+
+    if (res->type != REDIS_REPLY_ARRAY) {
+      fprintf(stderr, "scan reply error: %s\n", res->str);
+      exit(-1);
+    }
+    cursor = atol(res->element[0]->str);
+    total_key += res->element[1]->elements;
+    size_t master_node_idx_mask = pow(2, 12) - 1;
+    size_t master_node_idx = (cursor & master_node_idx_mask);
+    printf("total_key: %12lu, cursor: %12lu, current_master_idx: %lu\n", total_key, cursor, master_node_idx);
+  } while (cursor != 0);
+  printf("finish\n");
+}
+
 void* updateQPS(void *) {
   struct timeval now_tv;
   int64_t last_time = 0;
@@ -738,14 +775,15 @@ int main(int argc, char **argv) {
   pthread_create(&tid[2], NULL, pressureHSet, NULL);
   pthread_create(&tid[3], NULL, pressureSAdd, NULL);
   pthread_create(&tid[4], NULL, pressureZAdd, NULL);
-  */
   for (size_t i = 0; i < 128; i++) {
     pthread_create(&tid[i], NULL, pressureSubscribe, NULL);
   }
 
   pthread_t update_qps_thread;
   pthread_create(&update_qps_thread, NULL, updateQPS, NULL);
+  */
 
+  ScanData(NULL);
   while (true) {
     sleep(1);
   }
