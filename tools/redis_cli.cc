@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include <iostream>
-#include <hiredis.h>
+#include <hiredis/hiredis.h>
 
 static const char *hostname = "127.0.0.1";
 static const int port = 9221;

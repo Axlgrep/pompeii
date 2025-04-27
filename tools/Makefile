@@ -1,6 +1,7 @@
 CXX=g++
-LDFLAGS=-lpthread -lsnappy
-CXXFLAGS=-std=c++11
+#LDFLAGS=-lpthread -lsnappy -levent -lglog -lgflags -static-libstdc++ -g
+LDFLAGS=-lpthread -lsnappy -lglog -lgflags -static-libstdc++ -static-libgcc -g
+CXXFLAGS=-Wno-error=deprecated-copy
 
 .PHONY : clean all
 
@@ -9,15 +10,15 @@ THIRD_PATH=../third
 ROCKSDB_PATH=$(THIRD_PATH)/rocksdb
 ROCKSDB_LIBRARY=$(ROCKSDB_PATH)/librocksdb.a
 
-HIREDIS_PATH=$(THIRD_PATH)/hiredis-vip
-HIREDIS_LIBRARY=$(HIREDIS_PATH)/libhiredis_vip.a
+HIREDIS_PATH=$(THIRD_PATH)/hiredis
+HIREDIS_LIBRARY=$(HIREDIS_PATH)/libhiredis.a
 
 SLASH_PATH=$(THIRD_PATH)/slash
 SLASH_LIBRARY=$(SLASH_PATH)/slash/lib/libslash.a
 
 INCLUDE_PATH = -I./                        \
 						 	 -I$(ROCKSDB_PATH)/include   \
-							 -I$(HIREDIS_PATH)           \
+							 -I$(HIREDIS_PATH)/..        \
 							 -I$(SLASH_PATH)             \
 
 LIB_PATH     =
@@ -25,9 +26,10 @@ LIB_PATH     =
 
 LIBS         =
 
-OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo pipe_example duplex_pipe_example popen_example fifo_example fifo_client_example fifo_server_example fifo_main_client_example fifo_main_server_example
+OBJECT : ROCKSDB HIREDIS SLASH redis_cli demo pipe_example duplex_pipe_example popen_example fifo_example fifo_client_example fifo_server_example fifo_main_client_example fifo_main_server_example lys_bench
 
-all: $(OBJECT)
+#all: $(OBJECT)
+all: lys_bench
 
 ROCKSDB:
 	$(AM_V_at)make -j $(PROCESSOR_NUMS) -C $(ROCKSDB_PATH)/ static_lib
@@ -68,8 +70,11 @@ fifo_main_client_example : fifo_main_client_example.cc
 fifo_main_server_example : fifo_main_server_example.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) $(SLASH_LIBRARY)
 
+lys_bench : lys_bench.cc
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@  $(INCLUDE_PATH) ./libhiredis.a ./libevent.a
+
 clean:
-	rm -rf redis_cli demo
+	rm -rf redis_cli demo lys_bench
 
 distclean:
 	make -C $(ROCKSDB_PATH) clean 
